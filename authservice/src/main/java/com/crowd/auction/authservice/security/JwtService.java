@@ -9,19 +9,29 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
+
+    // Simple in-memory blacklist for demonstration.
+    // In production, use Redis or a Database table for token blacklisting.
+    private final Set<String> blacklistedTokens = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Value("${application.security.jwt.secret}")
     private String secretKey;
 
     @Value("${application.security.jwt.expiration}")
     private long jwtExpiration;
+
+    @Value("${application.security.jwt.refresh-token.expiration:604800000}")
+    private long refreshExpiration;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -40,6 +50,10 @@ public class JwtService {
         return buildToken(extraClaims, userDetails, jwtExpiration);
     }
 
+    public String generateRefreshToken(UserDetails userDetails) {
+        return buildToken(new HashMap<>(), userDetails, refreshExpiration);
+    }
+
     private String buildToken(Map<String, Object> extraClaims, UserDetails userDetails, long expiration) {
         return Jwts.builder()
                 .claims(extraClaims)
@@ -50,7 +64,14 @@ public class JwtService {
                 .compact();
     }
 
+    public void blacklistToken(String token) {
+        blacklistedTokens.add(token);
+    }
+
     public boolean isTokenValid(String token, UserDetails userDetails) {
+        if (blacklistedTokens.contains(token)) {
+            return false;
+        }
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
