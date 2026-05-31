@@ -1,6 +1,7 @@
 package com.crowd.auction.authservice.service;
 
 import com.crowd.auction.authservice.dto.RegisterRequest;
+import com.crowd.auction.authservice.dto.UpdateProfileRequest;
 import com.crowd.auction.authservice.dto.UserDto;
 import com.crowd.auction.authservice.model.Role;
 import com.crowd.auction.authservice.model.User;
@@ -45,13 +46,24 @@ public class UserService {
         return mapToDto(userRepository.save(user));
     }
 
-    public UserDto updateUserProfile(Long userId, RegisterRequest request) {
+    public UserDto updateUserProfile(Long userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        user.setEmail(request.getEmail());
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            if (!user.getEmail().equals(request.getEmail()) && userRepository.findByEmail(request.getEmail()).isPresent()) {
+                throw new IllegalArgumentException("Email already in use");
+            }
+            user.setEmail(request.getEmail());
+        }
+
+        if (request.getFirstName() != null && !request.getFirstName().isBlank()) {
+            user.setFirstName(request.getFirstName());
+        }
+        if (request.getLastName() != null && !request.getLastName().isBlank()) {
+            user.setLastName(request.getLastName());
+        }
+
         if (request.getPassword() != null && !request.getPassword().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }

@@ -15,10 +15,14 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
@@ -96,7 +100,7 @@ public class AuthService {
 
     public void forgotPassword(ForgotPasswordRequest request) {
         // Stub implementation
-        System.out.println("Forgot password requested for email: " + request.getEmail());
+        log.info("Forgot password requested for email: {}", request.getEmail());
     }
 
     public void changePassword(ChangePasswordRequest request) {

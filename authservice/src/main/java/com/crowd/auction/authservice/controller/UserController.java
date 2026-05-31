@@ -1,6 +1,7 @@
 package com.crowd.auction.authservice.controller;
 
 import com.crowd.auction.authservice.dto.RegisterRequest;
+import com.crowd.auction.authservice.dto.UpdateProfileRequest;
 import com.crowd.auction.authservice.dto.UserDto;
 import com.crowd.auction.authservice.model.Role;
 import com.crowd.auction.authservice.service.UserService;
@@ -35,10 +36,10 @@ public class UserController {
         return ResponseEntity.ok(userService.createUser(request));
     }
 
-    @PostMapping("/{userId}")
+    @PutMapping("/{userId}")
     public ResponseEntity<UserDto> updateUserProfile(
             @PathVariable Long userId,
-            @Valid @RequestBody RegisterRequest request
+            @Valid @RequestBody UpdateProfileRequest request
     ) {
         return ResponseEntity.ok(userService.updateUserProfile(userId, request));
     }
