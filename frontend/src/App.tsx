@@ -16,6 +16,7 @@ import { BidHistory } from './pages/BidHistory';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { UserManagement } from './pages/UserManagement';
 import { AuditLog } from './pages/AuditLog';
+import { PrivateRoute } from './components/PrivateRoute';
 export function App() {
   return (
     <BrowserRouter>
@@ -25,18 +26,20 @@ export function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/verify" element={<Verify />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/auctions" element={<AuctionBrowse />} />
-        <Route path="/auctions/:id" element={<ItemDetail />} />
-        <Route path="/my-bids" element={<MyBids />} />
-        <Route path="/wallet" element={<WalletDashboard />} />
-        <Route path="/wallet/escrow" element={<EscrowHoldings />} />
-        <Route path="/seller/listings" element={<SellerListings />} />
-        <Route path="/seller/listings/new" element={<CreateListing />} />
-        <Route path="/seller/listings/:id/edit" element={<EditListing />} />
-        <Route path="/seller/listings/:id/bids" element={<BidHistory />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<UserManagement />} />
-        <Route path="/admin/audit" element={<AuditLog />} />
+        <Route element={<PrivateRoute />}>
+          <Route path="/auctions" element={<AuctionBrowse />} />
+          <Route path="/auctions/:id" element={<ItemDetail />} />
+          <Route path="/my-bids" element={<MyBids />} />
+          <Route path="/wallet" element={<WalletDashboard />} />
+          <Route path="/wallet/escrow" element={<EscrowHoldings />} />
+          <Route path="/seller/listings" element={<SellerListings />} />
+          <Route path="/seller/listings/new" element={<CreateListing />} />
+          <Route path="/seller/listings/:id/edit" element={<EditListing />} />
+          <Route path="/seller/listings/:id/bids" element={<BidHistory />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<UserManagement />} />
+          <Route path="/admin/audit" element={<AuditLog />} />
+        </Route>
       </Routes>
     </BrowserRouter>);
 

@@ -3,17 +3,46 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../components/AuthLayout';
 import { User, Store } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../hooks/useAuth';
+
 type UserRole = 'buyer' | 'seller';
 export function Register() {
   const navigate = useNavigate();
+  const { register } = useAuth();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState<UserRole>('buyer');
-  const handleSubmit = (e: React.FormEvent) => {
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/verify');
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const parts = fullName.trim().split(' ');
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || 'User';
+
+      await register({
+        firstName,
+        lastName,
+        email,
+        password,
+        role: role.toUpperCase() // BUYER or SELLER
+      });
+      navigate('/');
+    } catch (err: any) {
+      setError(err.response?.data?.message ?? "Registration failed");
+    } finally {
+      setLoading(false);
+    }
   };
   const tabs = [
   {
@@ -37,6 +66,7 @@ export function Register() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <p className="mb-2 text-sm text-red-600 text-center">{error}</p>}
         <div>
           <label
             htmlFor="fullName"
@@ -142,9 +172,10 @@ export function Register() {
 
         <button
           type="submit"
-          className="w-full bg-slate-800 text-white py-2 rounded-full font-medium hover:bg-slate-900 transition-colors">
+          disabled={loading}
+          className="w-full bg-slate-800 text-white py-2 rounded-full font-medium hover:bg-slate-900 transition-colors disabled:bg-slate-400">
           
-          Create account
+          {loading ? "Creating account…" : "Create account"}
         </button>
       </form>
 
