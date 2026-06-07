@@ -132,5 +132,17 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-crowd}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:5173"
+    environment:
+      - VITE_AUTH_URL=http://localhost:${AUTH_SERVICE_PORT:-8081}
+      - VITE_API_GATEWAY_URL=http://localhost:${GATEWAY_PORT:-8080}
+    depends_on:
+      - auth-service
+      - api-gateway
+
 volumes:
   postgres-data:
