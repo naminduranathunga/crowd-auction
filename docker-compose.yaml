@@ -39,6 +39,13 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+
   eureka-server:
     build:
       context: ./eureka-server
@@ -85,6 +92,7 @@ services:
       - postgres
       - kafka
       - eureka-server
+      - redis
     ports:
       - "${BID_SERVICE_PORT:-8082}:8082"
     environment:
@@ -95,6 +103,8 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-crowd}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-crowd}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
 
   item-service:
     build:
@@ -146,3 +156,4 @@ services:
 
 volumes:
   postgres-data:
+  redis-data:
