@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Gavel, Search, Bell, User, LogOut } from 'lucide-react';
+import { Gavel, Search, Bell, User, LogOut, Wallet } from 'lucide-react';
 import { NotificationPanel } from './NotificationPanel';
 import { useAuth } from '../hooks/useAuth';
 interface TopNavProps {
@@ -30,6 +30,13 @@ export function TopNav({ centerContent }: TopNavProps) {
             }
 
             <div className="flex items-center gap-3">
+              <Link
+                to="/wallet"
+                className="p-2 bg-white/40 backdrop-blur-sm border border-white/60 rounded-full text-slate-700 hover:bg-white/60 transition-colors flex items-center justify-center"
+                title="Wallet"
+              >
+                <Wallet className="w-5 h-5" />
+              </Link>
               <button className="p-2 bg-white/40 backdrop-blur-sm border border-white/60 rounded-full text-slate-700 hover:bg-white/60 transition-colors" title="Search">
                 <Search className="w-5 h-5" />
               </button>
