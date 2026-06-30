@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { TopNav } from '../components/TopNav';
 import { Camera, X, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { createListing } from '../services/itemApi';
 export function CreateListing() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
@@ -11,6 +14,8 @@ export function CreateListing() {
   const [startDateTime, setStartDateTime] = useState('');
   const [duration, setDuration] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
@@ -23,14 +28,75 @@ export function CreateListing() {
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
   };
+  const buildEndTime = (start: string, durationMinutes: string): string => {
+    const startMs = new Date(start).getTime();
+    const endMs = startMs + Number(durationMinutes) * 60 * 1000;
+    return new Date(endMs).toISOString().slice(0, 19); // strip milliseconds/Z
+  };
+
+  const submitListing = async (status: 'DRAFT' | 'ACTIVE') => {
+    if (!user) {
+      setError('You must be logged in to create a listing.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const auction = await createListing(
+        {
+          userId: user.id,
+          name: title,
+          description,
+          startTime: new Date(startDateTime).toISOString().slice(0, 19),
+          endTime: buildEndTime(startDateTime, duration),
+          status,
+        },
+        {
+          name: title,
+          description,
+          startPrice: Number(startingPrice),
+          currentPrice: Number(startingPrice),
+        }
+      );
+      // Persist the first uploaded image URL for this auction in localStorage
+      if (images.length > 0) {
+        // Convert blob URL to base64 data URL so it survives page reloads
+        try {
+          const response = await fetch(images[0]);
+          const blob = await response.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            localStorage.setItem(`auction_image_${auction.id}`, reader.result as string);
+          };
+          reader.readAsDataURL(blob);
+        } catch {
+          // If conversion fails just skip image persistence
+        }
+      }
+
+      // Persist category
+      if (category) {
+        localStorage.setItem(`auction_category_${auction.id}`, category);
+      }
+
+      navigate('/seller/listings');
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ??
+        'Failed to create listing. Please try again.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Listing published!');
-    navigate('/seller/listings');
+    submitListing('ACTIVE');
   };
+
   const handleSaveDraft = () => {
-    alert('Listing saved as draft');
-    navigate('/seller/listings');
+    submitListing('DRAFT');
   };
   const inputClass =
   'w-full px-4 py-2 bg-white/40 backdrop-blur-sm border border-white/60 rounded-2xl text-slate-800 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-800/30 focus:border-slate-800/40';
@@ -102,12 +168,26 @@ export function CreateListing() {
                 required>
                 
                 <option value="">Select a category</option>
-                <option value="watches">Watches</option>
-                <option value="art">Art</option>
-                <option value="books">Books</option>
-                <option value="fashion">Fashion</option>
                 <option value="electronics">Electronics</option>
+                <option value="antiques">Antiques</option>
                 <option value="collectibles">Collectibles</option>
+                <option value="art">Art</option>
+                <option value="jewelry_watches">Jewelry &amp; Watches</option>
+                <option value="vehicles">Vehicles</option>
+                <option value="fashion">Fashion</option>
+                <option value="home_furniture">Home &amp; Furniture</option>
+                <option value="books_manuscripts">Books &amp; Manuscripts</option>
+                <option value="musical_instruments">Musical Instruments</option>
+                <option value="sports_outdoors">Sports &amp; Outdoors</option>
+                <option value="coins_bullion">Coins &amp; Bullion</option>
+                <option value="luxury_goods">Luxury Goods</option>
+                <option value="office_equipment">Office Equipment</option>
+                <option value="industrial_equipment">Industrial Equipment</option>
+                <option value="cameras_photography">Cameras &amp; Photography</option>
+                <option value="toys_hobbies">Toys &amp; Hobbies</option>
+                <option value="health_beauty">Health &amp; Beauty</option>
+                <option value="garden_outdoor">Garden &amp; Outdoor</option>
+                <option value="other">Other</option>
               </select>
             </div>
 
@@ -221,19 +301,25 @@ export function CreateListing() {
             </div>
           </div>
 
+          {error && (
+            <p className="text-red-600 text-sm text-center bg-red-100/60 rounded-2xl px-4 py-2">
+              {error}
+            </p>
+          )}
+
           <div className="flex gap-3">
             <button
               type="button"
               onClick={handleSaveDraft}
-              className="flex-1 px-6 py-3 bg-white/40 backdrop-blur-sm border border-white/60 text-slate-800 rounded-full font-semibold hover:bg-white/60 transition-colors">
-              
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-white/40 backdrop-blur-sm border border-white/60 text-slate-800 rounded-full font-semibold hover:bg-white/60 transition-colors disabled:opacity-50">
               Save as draft
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-slate-800 text-white rounded-full font-semibold hover:bg-slate-900 transition-colors">
-              
-              Publish listing
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-slate-800 text-white rounded-full font-semibold hover:bg-slate-900 transition-colors disabled:opacity-50">
+              {loading ? 'Saving…' : 'Publish listing'}
             </button>
           </div>
         </form>

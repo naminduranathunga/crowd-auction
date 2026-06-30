@@ -77,6 +77,10 @@ public class AuctionService {
         Auction auction = auctionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Auction not found"));
         
+        if (auction.getStatus() != AuctionStatus.DRAFT && auction.getStatus() != AuctionStatus.PENDING) {
+            throw new IllegalStateException("Only draft or pending auctions can be deleted");
+        }
+
         AuctionResponseDTO responseDTO = auctionMapper.toResponseDTO(auction);
         auctionRepository.delete(auction);
         
