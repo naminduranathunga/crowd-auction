@@ -34,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("refresh", newTokens.refresh);
       axios.defaults.headers.common["Authorization"] = `Bearer ${newTokens.access}`;
       const payload: any = jwtDecode(newTokens.access);
-      setUser({ id: payload.sub, email: payload.email, roles: payload.roles ?? [] });
+      setUser({ id: String(payload.userId ?? payload.sub), email: payload.email ?? payload.sub, roles: payload.roles ?? [] });
     } else {
       localStorage.removeItem("access");
       localStorage.removeItem("refresh");
