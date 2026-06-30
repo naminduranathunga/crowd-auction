@@ -22,11 +22,17 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc -w 2 localhost 2181 | grep Mode:"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "${KAFKA_PORT:-9092}:9092"
     environment:
@@ -38,6 +44,23 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   eureka-server:
     build:
@@ -52,7 +75,8 @@ services:
     build:
       context: ./api-gateway
     depends_on:
-      - eureka-server
+      eureka-server:
+        condition: service_started
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     environment:
@@ -64,9 +88,12 @@ services:
     build:
       context: ./authservice
     depends_on:
-      - postgres
-      - kafka
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
     ports:
       - "${AUTH_SERVICE_PORT:-8081}:8081"
     environment:
@@ -82,9 +109,14 @@ services:
     build:
       context: ./bidservice
     depends_on:
-      - postgres
-      - kafka
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+      redis:
+        condition: service_healthy
     ports:
       - "${BID_SERVICE_PORT:-8082}:8082"
     environment:
@@ -95,14 +127,19 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-crowd}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-crowd}
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
 
   item-service:
     build:
       context: ./itemservice
     depends_on:
-      - postgres
-      - kafka
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
     ports:
       - "${ITEM_SERVICE_PORT:-8083}:8083"
     environment:
@@ -118,9 +155,12 @@ services:
     build:
       context: ./walletservice
     depends_on:
-      - postgres
-      - kafka
-      - eureka-server
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
     ports:
       - "${WALLET_SERVICE_PORT:-8084}:8084"
     environment:
@@ -141,8 +181,11 @@ services:
       - VITE_AUTH_URL=http://localhost:${AUTH_SERVICE_PORT:-8081}
       - VITE_API_GATEWAY_URL=http://localhost:${GATEWAY_PORT:-8080}
     depends_on:
-      - auth-service
-      - api-gateway
+      auth-service:
+        condition: service_started
+      api-gateway:
+        condition: service_started
 
 volumes:
   postgres-data:
+  redis-data:

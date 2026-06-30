@@ -4,6 +4,7 @@ import com.crowd.auction.itemservice.domain.Auction;
 import com.crowd.auction.itemservice.domain.Item;
 import com.crowd.auction.itemservice.dto.ItemRequestDTO;
 import com.crowd.auction.itemservice.dto.ItemResponseDTO;
+import com.crowd.auction.itemservice.dto.ItemStateResponseDTO;
 import com.crowd.auction.itemservice.exception.ResourceNotFoundException;
 import com.crowd.auction.itemservice.mapper.ItemMapper;
 import com.crowd.auction.itemservice.messaging.KafkaProducer;
@@ -88,5 +89,20 @@ public class ItemService {
         itemRepository.delete(item);
         
         kafkaProducer.sendItemEvent("ITEM_DELETED", responseDTO);
+    }
+
+    public ItemStateResponseDTO getItemState(Long itemId) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found"));
+        Auction auction = item.getAuction();
+        return ItemStateResponseDTO.builder()
+                .itemId(item.getId())
+                .auctionId(auction.getId())
+                .startPrice(item.getStartPrice())
+                .currentPrice(item.getCurrentPrice())
+                .status(auction.getStatus().name())
+                .startTime(auction.getStartTime())
+                .endTime(auction.getEndTime())
+                .build();
     }
 }
