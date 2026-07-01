@@ -15,18 +15,36 @@ interface AuthContextProps {
 
 export const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tokens, setTokens] = useState<Tokens | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+const getStoredSession = (): { tokens: Tokens | null; user: User | null } => {
+  const access = localStorage.getItem("access");
+  const refresh = localStorage.getItem("refresh");
 
-  // Initialise from localStorage
-  useEffect(() => {
-    const access = localStorage.getItem("access");
-    const refresh = localStorage.getItem("refresh");
-    if (access && refresh) {
-      setSession({ access, refresh });
-    }
-  }, []);
+  if (!access || !refresh) {
+    return { tokens: null, user: null };
+  }
+
+  try {
+    const payload: any = jwtDecode(access);
+    const parsedUser = {
+      id: String(payload.userId ?? payload.sub),
+      email: payload.email ?? payload.sub,
+      roles: payload.roles ?? [],
+    };
+
+    axios.defaults.headers.common["Authorization"] = `Bearer ${access}`;
+    return { tokens: { access, refresh }, user: parsedUser };
+  } catch {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    delete axios.defaults.headers.common["Authorization"];
+    return { tokens: null, user: null };
+  }
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [initialSession] = useState(getStoredSession);
+  const [tokens, setTokens] = useState<Tokens | null>(initialSession.tokens);
+  const [user, setUser] = useState<User | null>(initialSession.user);
 
   const setSession = (newTokens: Tokens | null) => {
     if (newTokens) {
@@ -45,16 +63,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = useCallback(async (email: string, password: string) => {
+    const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:8080';
     const resp = await axios.post(
-      `${import.meta.env.VITE_AUTH_URL}/api/v1/auth/login`,
+      `${gatewayUrl}/api/v1/auth/login`,
       { email, password }
     );
     setSession({ access: resp.data.token, refresh: resp.data.refreshToken });
   }, []);
 
   const register = useCallback(async (data: any) => {
+    const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:8080';
     const resp = await axios.post(
-      `${import.meta.env.VITE_AUTH_URL}/api/v1/auth/register`,
+      `${gatewayUrl}/api/v1/auth/register`,
       data
     );
     setSession({ access: resp.data.token, refresh: resp.data.refreshToken });
@@ -67,8 +87,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!tokens) return;
     const interval = setInterval(async () => {
       try {
+        const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:8080';
         const resp = await axios.post(
-          `${import.meta.env.VITE_AUTH_URL}/api/v1/auth/refresh-token`,
+          `${gatewayUrl}/api/v1/auth/refresh-token`,
           { refreshToken: tokens.refresh }
         );
         setSession({ access: resp.data.token, refresh: resp.data.refreshToken });

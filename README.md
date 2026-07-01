@@ -30,6 +30,12 @@ docker compose up --build
 3. Open the API Gateway at: http://localhost:${GATEWAY_PORT:-8080}
 	- Eureka dashboard: http://localhost:${EUREKA_PORT:-8761}
 
+4. Start with scaling up the services
+
+```powershell
+docker compose up -d --scale bid-service=2
+```
+
 ## Notes
 
 - The Dockerfiles use a multi-stage Maven build and expect a standard Maven project layout (pom.xml + src/). They build a runnable jar and run it with `java -jar`.

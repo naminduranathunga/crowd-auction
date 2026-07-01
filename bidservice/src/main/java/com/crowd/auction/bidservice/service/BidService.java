@@ -5,6 +5,7 @@ import com.crowd.auction.bidservice.dto.*;
 import com.crowd.auction.bidservice.exception.InvalidBidException;
 import com.crowd.auction.bidservice.exception.ResourceNotFoundException;
 import com.crowd.auction.bidservice.messaging.KafkaProducer;
+import com.crowd.auction.bidservice.messaging.BidWebSocketPublisher;
 import com.crowd.auction.bidservice.repository.BidRepository;
 import com.crowd.auction.itemservice.dto.BidEvent;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class BidService {
     private final StringRedisTemplate redisTemplate;
     private final RestTemplate restTemplate;
     private final KafkaProducer kafkaProducer;
+    private final BidWebSocketPublisher bidWebSocketPublisher;
 
     private static final String ITEM_SERVICE_URL = "http://itemservice/api/v1/internal/items/";
 
@@ -93,6 +95,12 @@ public class BidService {
                     .price(amount)
                     .build();
             kafkaProducer.sendBidEvent(event);
+
+            try {
+                bidWebSocketPublisher.publishBidUpdate(convertToResponse(savedBid));
+            } catch (Exception e) {
+                log.warn("Failed to publish websocket update for bid {}", savedBid.getId(), e);
+            }
 
             return convertToResponse(savedBid);
         } else {

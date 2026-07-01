@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { TopNav } from '../components/TopNav';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
@@ -152,7 +152,6 @@ export function SellerListings() {
                     const firstItem = auction.items && auction.items.length > 0 ? auction.items[0] : null;
                     const startingPrice = firstItem?.startPrice || 0;
                     const currentBid = firstItem?.currentPrice && firstItem.currentPrice > startingPrice ? firstItem.currentPrice : null;
-                    const hasBids = currentBid !== null;
                     const isEditable = auction.status === 'DRAFT' || auction.status === 'PENDING';
 
                     return (
@@ -164,7 +163,7 @@ export function SellerListings() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <img
-                              src={localStorage.getItem(`auction_image_${auction.id}`) || `https://ui-avatars.com/api/?name=${encodeURIComponent(auction.name)}&size=48&background=cbd5e1&color=334155&bold=true&format=png`}
+                              src={auction.items[0]?.coverImageUrl || auction.items[0]?.images?.[0]?.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(auction.name)}&size=48&background=cbd5e1&color=334155&bold=true&format=png`}
                               alt={auction.name}
                               className="w-12 h-12 rounded-2xl object-cover flex-shrink-0"
                             />

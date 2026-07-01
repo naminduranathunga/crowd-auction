@@ -13,20 +13,29 @@ export function CreateListing() {
   const [startingPrice, setStartingPrice] = useState('');
   const [startDateTime, setStartDateTime] = useState('');
   const [duration, setDuration] = useState('');
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<Array<{ file: File; previewUrl: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      const newImages = Array.from(files).map((file) =>
-      URL.createObjectURL(file)
-      );
-      setImages([...images, ...newImages]);
+    if (!files) {
+      return;
     }
+
+    const nextImages = Array.from(files).map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    setImages((currentImages) => [...currentImages, ...nextImages]);
+    e.target.value = '';
   };
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setImages((currentImages) => {
+      const nextImages = currentImages.filter((_, currentIndex) => currentIndex !== index);
+      URL.revokeObjectURL(currentImages[index]?.previewUrl);
+      return nextImages;
+    });
   };
   const buildEndTime = (start: string, durationMinutes: string): string => {
     const startMs = new Date(start).getTime();
@@ -56,25 +65,10 @@ export function CreateListing() {
           description,
           startPrice: Number(startingPrice),
           currentPrice: Number(startingPrice),
-        }
+        },
+        images.map((image) => image.file)
       );
-      // Persist the first uploaded image URL for this auction in localStorage
-      if (images.length > 0) {
-        // Convert blob URL to base64 data URL so it survives page reloads
-        try {
-          const response = await fetch(images[0]);
-          const blob = await response.blob();
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            localStorage.setItem(`auction_image_${auction.id}`, reader.result as string);
-          };
-          reader.readAsDataURL(blob);
-        } catch {
-          // If conversion fails just skip image persistence
-        }
-      }
 
-      // Persist category
       if (category) {
         localStorage.setItem(`auction_category_${auction.id}`, category);
       }
@@ -280,10 +274,10 @@ export function CreateListing() {
 
               {images.length > 0 &&
               <div className="grid grid-cols-4 gap-3 mt-4">
-                  {images.map((img, idx) =>
+                  {images.map((image, idx) =>
                 <div key={idx} className="relative group">
                       <img
-                    src={img}
+                    src={image.previewUrl}
                     alt=""
                     className="w-full aspect-square object-cover rounded-2xl" />
                   
