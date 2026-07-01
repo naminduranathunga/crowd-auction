@@ -11,7 +11,7 @@ spring:
         - id: bid-service
           uri: lb://bidservice
           predicates:
-            - Path=/api/item/{id}/bid
+            - Path=/api/item/**/bid
 
 server:
   port: ${SERVER_PORT:8080}
@@ -25,8 +25,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include:
+          - health
+          - info
+          - gateway
   endpoint:
+    gateway:
+      enabled: true
     health:
       probes:
         enabled: true
