@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_WALLET_SERVICE_URL || 'http://localhost:8084';
+const BASE_URL = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:8080';
 
 export interface WalletDto {
   id: number;

@@ -11,7 +11,7 @@ export interface BidUpdateDTO {
 
 type BidUpdateHandler = (bid: BidUpdateDTO) => void;
 
-const BID_WS_URL = import.meta.env.VITE_BID_WS_URL ?? 'http://localhost:8082/ws';
+const BID_WS_URL = `${import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:8080'}/ws`;
 
 export function subscribeToBidUpdates(itemId: number, onBidUpdate: BidUpdateHandler, onError?: (message: string) => void) {
   const client = new Client({

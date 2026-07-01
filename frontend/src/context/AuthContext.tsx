@@ -63,16 +63,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = useCallback(async (email: string, password: string) => {
+    const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:8080';
     const resp = await axios.post(
-      `${import.meta.env.VITE_AUTH_URL}/api/v1/auth/login`,
+      `${gatewayUrl}/api/v1/auth/login`,
       { email, password }
     );
     setSession({ access: resp.data.token, refresh: resp.data.refreshToken });
   }, []);
 
   const register = useCallback(async (data: any) => {
+    const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:8080';
     const resp = await axios.post(
-      `${import.meta.env.VITE_AUTH_URL}/api/v1/auth/register`,
+      `${gatewayUrl}/api/v1/auth/register`,
       data
     );
     setSession({ access: resp.data.token, refresh: resp.data.refreshToken });
@@ -85,8 +87,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!tokens) return;
     const interval = setInterval(async () => {
       try {
+        const gatewayUrl = import.meta.env.VITE_API_GATEWAY_URL ?? 'http://localhost:8080';
         const resp = await axios.post(
-          `${import.meta.env.VITE_AUTH_URL}/api/v1/auth/refresh-token`,
+          `${gatewayUrl}/api/v1/auth/refresh-token`,
           { refreshToken: tokens.refresh }
         );
         setSession({ access: resp.data.token, refresh: resp.data.refreshToken });
