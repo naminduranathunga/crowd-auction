@@ -15,18 +15,36 @@ interface AuthContextProps {
 
 export const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [tokens, setTokens] = useState<Tokens | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+const getStoredSession = (): { tokens: Tokens | null; user: User | null } => {
+  const access = localStorage.getItem("access");
+  const refresh = localStorage.getItem("refresh");
 
-  // Initialise from localStorage
-  useEffect(() => {
-    const access = localStorage.getItem("access");
-    const refresh = localStorage.getItem("refresh");
-    if (access && refresh) {
-      setSession({ access, refresh });
-    }
-  }, []);
+  if (!access || !refresh) {
+    return { tokens: null, user: null };
+  }
+
+  try {
+    const payload: any = jwtDecode(access);
+    const parsedUser = {
+      id: String(payload.userId ?? payload.sub),
+      email: payload.email ?? payload.sub,
+      roles: payload.roles ?? [],
+    };
+
+    axios.defaults.headers.common["Authorization"] = `Bearer ${access}`;
+    return { tokens: { access, refresh }, user: parsedUser };
+  } catch {
+    localStorage.removeItem("access");
+    localStorage.removeItem("refresh");
+    delete axios.defaults.headers.common["Authorization"];
+    return { tokens: null, user: null };
+  }
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [initialSession] = useState(getStoredSession);
+  const [tokens, setTokens] = useState<Tokens | null>(initialSession.tokens);
+  const [user, setUser] = useState<User | null>(initialSession.user);
 
   const setSession = (newTokens: Tokens | null) => {
     if (newTokens) {
