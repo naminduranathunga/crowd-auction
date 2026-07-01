@@ -8,10 +8,7 @@ type FilterType = 'all' | 'active' | 'ending' | 'closed';
 
 
 function getAuctionImage(auction: AuctionResponse): string {
-  if (localStorage.getItem(`auction_image_${auction.id}`)) {
-    return localStorage.getItem(`auction_image_${auction.id}`)!;
-  }
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(auction.name)}&size=48&background=cbd5e1&color=334155&bold=true&format=png`;
+  return auction.items[0]?.coverImageUrl || auction.items[0]?.images?.[0]?.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(auction.name)}&size=48&background=cbd5e1&color=334155&bold=true&format=png`;
 }
 
 function AuctionRemaingTimeComponent({ auction }: { auction: AuctionResponse }) {

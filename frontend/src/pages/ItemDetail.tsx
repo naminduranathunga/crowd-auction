@@ -1,83 +1,23 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { TopNav } from '../components/TopNav';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import RealtimeBidder from '../components/RealtimeBidder';
 import { AuctionResponse, getAuctionById } from '../services/itemApi';
 import AuctionStatusBadge from '../components/AuctionStatusBadge';
 import AuctionDetailsTimer from '../components/AuctionDetailsTimer';
-import { placeBid } from '../services/bidApi';
-import { useAuth } from '../hooks/useAuth';
-const mockItem = {
-  id: 1,
-  title: 'Vintage Rolex Submariner',
-  seller: 'WatchCollector_Pro',
-  images: [
-  'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=800',
-  'https://images.unsplash.com/photo-1587836374228-4c4c1c4c0c5f?w=800',
-  'https://images.unsplash.com/photo-1614164185128-e4ec99c436d7?w=800'],
-
-  currentBid: 15420,
-  minNextBid: 15500,
-  timeLeft: {
-    hours: 2,
-    minutes: 34,
-    seconds: 12
-  },
-  description:
-  'Authentic vintage Rolex Submariner in excellent condition. Includes original box and papers.',
-  bidHistory: [
-  {
-    bidder: 'Bidder #7',
-    amount: 15420,
-    time: '2 minutes ago'
-  },
-  {
-    bidder: 'Bidder #3',
-    amount: 15200,
-    time: '8 minutes ago'
-  },
-  {
-    bidder: 'Bidder #7',
-    amount: 15000,
-    time: '15 minutes ago'
-  },
-  {
-    bidder: 'Bidder #2',
-    amount: 14800,
-    time: '23 minutes ago'
-  }]
-
-};
 export function ItemDetail() {
   const { id } = useParams();
-  const {user} = useAuth();
   const [currentAuction, setCurrentAuction] = useState<AuctionResponse|null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string|null>(null);
   
   const [selectedImage, setSelectedImage] = useState(0);
-  const [bidAmount, setBidAmount] = useState('');
-  const [showBidHistory, setShowBidHistory] = useState(false);
-  
-  const handlePlaceBid = (e: React.FormEvent) => {
-    e.preventDefault();
-    placeBid(id ? parseInt(id) : 0, parseFloat(bidAmount), user?.id || '')
-      .then((response) => {
-        alert(`Bid placed: $${response.amount}`);
-        setBidAmount('');
-        document.dispatchEvent(new CustomEvent("bid-placed", { detail: { itemId: id, bid: response } }));
-      })
-      .catch((error) => {
-        console.error('Error placing bid:', error);
-        alert('Failed to place bid. Please try again.');
-      });
-  };
 
   useEffect(() => {
     getAuctionById(id ? parseInt(id) : 0)
       .then((auction) => {
         setCurrentAuction(auction);
+        setSelectedImage(0);
       })
       .catch((error) => {
         console.error('Error fetching auction details:', error);
@@ -102,6 +42,32 @@ export function ItemDetail() {
     }
   }, [currentAuction]);
 
+  const item = currentAuction?.items?.[0];
+  const itemImages = item?.images?.map((image) => image.imageUrl) || [];
+  const activeImage = itemImages[selectedImage] || item?.coverImageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentAuction?.name || 'Item')}&size=800&background=cbd5e1&color=334155&bold=true&format=png`;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen">
+        <TopNav />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-slate-600">
+          Loading listing...
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !currentAuction) {
+    return (
+      <div className="min-h-screen">
+        <TopNav />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-red-600">
+          {error || 'Listing not found.'}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen">
       <TopNav />
@@ -111,26 +77,28 @@ export function ItemDetail() {
           <div>
             <div className="aspect-video glass-card rounded-3xl overflow-hidden mb-4">
               <img
-                src={mockItem.images[selectedImage]}
-                alt={mockItem.title}
+                src={activeImage}
+                alt={currentAuction?.name || 'Item'}
                 className="w-full h-full object-cover" />
               
             </div>
-            <div className="flex gap-2">
-              {mockItem.images.map((img, idx) =>
-              <button
-                key={idx}
-                onClick={() => setSelectedImage(idx)}
-                className={`w-20 h-20 rounded-2xl overflow-hidden border-2 transition-all ${selectedImage === idx ? 'border-slate-800' : 'border-white/50'}`}>
-                
-                  <img
-                  src={img}
-                  alt=""
-                  className="w-full h-full object-cover" />
-                
-                </button>
-              )}
-            </div>
+            {itemImages.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {itemImages.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedImage(idx)}
+                  className={`w-20 h-20 rounded-2xl overflow-hidden border-2 transition-all ${selectedImage === idx ? 'border-slate-800' : 'border-white/50'}`}>
+                  
+                    <img
+                    src={img}
+                    alt=""
+                    className="w-full h-full object-cover" />
+                  
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {currentAuction && <div className="space-y-6">

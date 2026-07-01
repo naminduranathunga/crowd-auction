@@ -3,6 +3,22 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - http://localhost:5173
+              - http://127.0.0.1:5173
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
       discovery:
         locator:
           enabled: true
@@ -11,7 +27,11 @@ spring:
         - id: bid-service
           uri: lb://bidservice
           predicates:
-            - Path=/api/item/**/bid
+            - Path=/api/v1/bids/**
+        - id: auth-service
+          uri: lb://authservice
+          predicates:
+            - Path=/api/v1/auth/**
 
 server:
   port: ${SERVER_PORT:8080}

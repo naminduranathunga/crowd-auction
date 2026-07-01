@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { TopNav } from '../components/TopNav';
 import { Camera, X, ArrowLeft, AlertCircle } from 'lucide-react';
-import { getAuctionById, updateAuction, updateItem, AuctionResponse } from '../services/itemApi';
-import { useAuth } from '../hooks/useAuth';
+import { getAuctionById, updateAuction, updateItem, AuctionResponse, ItemImageResponse } from '../services/itemApi';
 import { ConfirmModal } from '../components/ConfirmModal';
 
 export function EditListing() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth();
-  
   const [auction, setAuction] = useState<AuctionResponse | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -18,7 +15,8 @@ export function EditListing() {
   const [startingPrice, setStartingPrice] = useState('');
   const [startDateTime, setStartDateTime] = useState('');
   const [duration, setDuration] = useState('60');
-  const [images, setImages] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<ItemImageResponse[]>([]);
+  const [newImages, setNewImages] = useState<Array<{ file: File; previewUrl: string }>>([]);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,11 +61,7 @@ export function EditListing() {
 
         if (data.items && data.items.length > 0) {
           setStartingPrice(String(data.items[0].startPrice || ''));
-        }
-
-        const storedImg = localStorage.getItem(`auction_image_${id}`);
-        if (storedImg) {
-          setImages([storedImg]);
+          setExistingImages(data.items[0].images || []);
         }
       } catch (err) {
         console.error('Failed to load auction', err);
@@ -81,14 +75,25 @@ export function EditListing() {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (files) {
-      const newImages = Array.from(files).map((file) => URL.createObjectURL(file));
-      setImages([...images, ...newImages]);
+    if (!files) {
+      return;
     }
+
+    const nextImages = Array.from(files).map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    setNewImages((currentImages) => [...currentImages, ...nextImages]);
+    e.target.value = '';
   };
 
-  const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+  const removeNewImage = (index: number) => {
+    setNewImages((currentImages) => {
+      const nextImages = currentImages.filter((_, currentIndex) => currentIndex !== index);
+      URL.revokeObjectURL(currentImages[index]?.previewUrl);
+      return nextImages;
+    });
   };
 
   const buildEndTime = (startStr: string, durationMinutes: string) => {
@@ -113,30 +118,18 @@ export function EditListing() {
 
       if (auction.items && auction.items.length > 0) {
         const itemId = auction.items[0].id;
-        await updateItem(id, itemId, {
-          name: title,
-          description,
-          startPrice: Number(startingPrice),
-        });
+        await updateItem(
+          id,
+          itemId,
+          {
+            name: title,
+            description,
+            startPrice: Number(startingPrice),
+          },
+          newImages.map((image) => image.file)
+        );
       }
 
-      // Persist the first uploaded image URL for this auction in localStorage
-      if (images.length > 0 && images[0].startsWith('blob:')) {
-        // Only fetch and convert if it's a new blob URL
-        try {
-          const response = await fetch(images[0]);
-          const blob = await response.blob();
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            localStorage.setItem(`auction_image_${id}`, reader.result as string);
-          };
-          reader.readAsDataURL(blob);
-        } catch {
-          // If conversion fails just skip image persistence
-        }
-      }
-
-      // Persist category
       localStorage.setItem(`auction_category_${id}`, category);
 
       navigate('/seller/listings');
@@ -329,19 +322,39 @@ export function EditListing() {
                 </label>
               </div>
 
-              {images.length > 0 && (
-                <div className="grid grid-cols-4 gap-3 mt-4">
-                  {images.map((img, idx) => (
-                    <div key={idx} className="relative group">
-                      <img src={img} alt="" className="w-full aspect-square object-cover rounded-2xl" />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(idx)}
-                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+              {existingImages.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-slate-600 mb-2">Current images</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {existingImages.map((image) => (
+                      <div key={image.id} className="relative group">
+                        <img
+                          src={image.imageUrl}
+                          alt={image.originalFilename || ''}
+                          className="w-full aspect-square object-cover rounded-2xl"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {newImages.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-slate-600 mb-2">New images to upload</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    {newImages.map((image, idx) => (
+                      <div key={idx} className="relative group">
+                        <img src={image.previewUrl} alt="" className="w-full aspect-square object-cover rounded-2xl" />
+                        <button
+                          type="button"
+                          onClick={() => removeNewImage(idx)}
+                          className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -390,16 +403,16 @@ export function EditListing() {
 
       <ConfirmModal
         isOpen={showCancelConfirm}
-        onClose={() => setShowCancelConfirm(false)}
+        title="Cancel Auction"
+        message="Are you sure you want to cancel this auction? This action cannot be undone."
         onConfirm={() => {
           setShowCancelConfirm(false);
           submitListing('CANCELLED');
         }}
-        title="Cancel Auction"
-        message="Are you sure you want to cancel this auction? This action cannot be undone."
+        onCancel={() => setShowCancelConfirm(false)}
         confirmText="Yes, cancel it"
         cancelText="No, keep it"
-        variant="danger"
+        isDestructive={true}
       />
     </div>
   );

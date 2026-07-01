@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { TopNav } from '../components/TopNav';
 import { ArrowLeft, Trophy } from 'lucide-react';
@@ -134,7 +134,7 @@ export function BidHistory() {
           <div className="flex flex-col md:flex-row gap-8">
             <div className="w-full md:w-1/3">
               <img
-                src={localStorage.getItem(`auction_image_${auction.id}`) || `https://ui-avatars.com/api/?name=${encodeURIComponent(auction.name)}&size=300&background=cbd5e1&color=334155&bold=true&format=png`}
+                src={auction.items[0]?.coverImageUrl || auction.items[0]?.images?.[0]?.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(auction.name)}&size=300&background=cbd5e1&color=334155&bold=true&format=png`}
                 alt={auction.name}
                 className="w-full h-48 md:h-64 rounded-2xl object-cover border border-slate-100"
               />

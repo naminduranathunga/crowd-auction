@@ -38,7 +38,7 @@ public class AuctionService {
     @Transactional
     public AuctionResponseDTO createAuction(AuctionRequestDTO requestDTO) {
         Auction auction = auctionMapper.toEntity(requestDTO);
-        auction.setStatus(AuctionStatus.DRAFT); // Default status
+        auction.setStatus(AuctionStatus.ACTIVE); // Default status
         Auction savedAuction = auctionRepository.save(auction);
         
         AuctionResponseDTO responseDTO = auctionMapper.toResponseDTO(savedAuction);

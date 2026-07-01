@@ -22,6 +22,16 @@ export interface CreateItemPayload {
   currentPrice: number;
 }
 
+export interface ItemImageResponse {
+  id: number;
+  objectKey: string;
+  imageUrl: string;
+  originalFilename?: string;
+  contentType?: string;
+  sortOrder: number;
+  primaryImage: boolean;
+}
+
 export interface AuctionResponse {
   id: number;
   userId: string;
@@ -39,6 +49,8 @@ export interface ItemResponse {
   description: string;
   startPrice: number;
   currentPrice: number;
+  coverImageUrl?: string;
+  images: ItemImageResponse[];
 }
 
 // ── API calls ───────────────────────────────────────────────────────────────
@@ -58,16 +70,32 @@ export async function createAuction(
   return resp.data;
 }
 
+function buildItemFormData(payload: CreateItemPayload, images: File[] = []): FormData {
+  const formData = new FormData();
+  formData.append(
+    'item',
+    new Blob([JSON.stringify(payload)], { type: 'application/json' })
+  );
+  images.forEach((image) => formData.append('images', image));
+  return formData;
+}
+
 /**
  * Step 2 – Add an item to the newly created auction.
  */
 export async function createItem(
   auctionId: number,
-  payload: CreateItemPayload
+  payload: CreateItemPayload,
+  images: File[] = []
 ): Promise<ItemResponse> {
   const resp = await axios.post<ItemResponse>(
     `${BASE_URL}/api/v1/auctions/${auctionId}/items`,
-    payload
+    buildItemFormData(payload, images),
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
   );
   return resp.data;
 }
@@ -78,10 +106,11 @@ export async function createItem(
  */
 export async function createListing(
   auctionPayload: CreateAuctionPayload,
-  itemPayload: CreateItemPayload
+  itemPayload: CreateItemPayload,
+  images: File[] = []
 ): Promise<AuctionResponse> {
   const auction = await createAuction(auctionPayload);
-  await createItem(auction.id, itemPayload);
+  await createItem(auction.id, itemPayload, images);
   return auction;
 }
 
@@ -125,11 +154,25 @@ export async function updateAuction(
 export async function updateItem(
   auctionId: number | string,
   itemId: number | string,
-  payload: Partial<CreateItemPayload>
+  payload: Partial<CreateItemPayload>,
+  images: File[] = []
 ): Promise<ItemResponse> {
+  if (images.length === 0) {
+    const resp = await axios.patch<ItemResponse>(
+      `${BASE_URL}/api/v1/auctions/${auctionId}/items/${itemId}`,
+      payload
+    );
+    return resp.data;
+  }
+
   const resp = await axios.patch<ItemResponse>(
     `${BASE_URL}/api/v1/auctions/${auctionId}/items/${itemId}`,
-    payload
+    buildItemFormData(payload as CreateItemPayload, images),
+    {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }
   );
   return resp.data;
 }
