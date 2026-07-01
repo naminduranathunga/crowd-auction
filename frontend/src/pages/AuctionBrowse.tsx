@@ -1,83 +1,69 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { TopNav } from '../components/TopNav';
 import { motion } from 'framer-motion';
+import { AuctionResponse, getAuctions } from '../services/itemApi';
+import AuctionStatusBadge from '../components/AuctionStatusBadge';
 type FilterType = 'all' | 'active' | 'ending' | 'closed';
-const mockAuctions = [
-{
-  id: 1,
-  title: 'Vintage Rolex Submariner',
-  image: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=400',
-  currentBid: 15420,
-  status: 'live',
-  timeLeft: {
-    hours: 2,
-    minutes: 34,
-    seconds: 12
+
+
+function getAuctionImage(auction: AuctionResponse): string {
+  if (localStorage.getItem(`auction_image_${auction.id}`)) {
+    return localStorage.getItem(`auction_image_${auction.id}`)!;
   }
-},
-{
-  id: 2,
-  title: 'Rare First Edition Book',
-  image: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400',
-  currentBid: 3200,
-  status: 'live',
-  timeLeft: {
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(auction.name)}&size=48&background=cbd5e1&color=334155&bold=true&format=png`;
+}
+
+function AuctionRemaingTimeComponent({ auction }: { auction: AuctionResponse }) {
+  const [timeLeft, setTimeLeft] = useState({
     hours: 0,
-    minutes: 45,
-    seconds: 30
-  }
-},
-{
-  id: 3,
-  title: 'Limited Edition Sneakers',
-  image: 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=400',
-  currentBid: 890,
-  status: 'live',
-  timeLeft: {
-    hours: 5,
-    minutes: 12,
-    seconds: 8
-  }
-},
-{
-  id: 4,
-  title: 'Vintage Fender Stratocaster',
-  image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=400',
-  currentBid: 7650,
-  status: 'live',
-  timeLeft: {
-    hours: 1,
-    minutes: 20,
-    seconds: 45
-  }
-},
-{
-  id: 5,
-  title: 'Canon EOS R5 Camera',
-  image: 'https://images.unsplash.com/photo-1606980707146-b0367c6b2f3d?w=400',
-  currentBid: 2340,
-  status: 'live',
-  timeLeft: {
-    hours: 3,
-    minutes: 8,
-    seconds: 22
-  }
-},
-{
-  id: 6,
-  title: 'Abstract Art Print',
-  image: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400',
-  currentBid: 1200,
-  status: 'live',
-  timeLeft: {
-    hours: 0,
-    minutes: 28,
-    seconds: 55
-  }
-}];
+    minutes: 0,
+    seconds: 0
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const endTime = new Date(auction.endTime);
+      const diff = endTime.getTime() - now.getTime();
+      
+      if (diff <= 0) {
+        setTimeLeft({
+          hours: 0,
+          minutes: 0,
+          seconds: 0
+        });
+        clearInterval(interval);
+        return;
+      }
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+      setTimeLeft({
+        hours,
+        minutes,
+        seconds
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [auction.endTime]);
+
+
+  return (
+    <div className="text-sm text-slate-600">
+      {String(timeLeft.hours).padStart(2, '0')}:
+      {String(timeLeft.minutes).padStart(2, '0')}:
+      {String(timeLeft.seconds).padStart(2, '0')}
+    </div>
+  );
+}
+
 
 export function AuctionBrowse() {
+  const [auctions, setAuctions] = useState<AuctionResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
   const filters: {
     value: FilterType;
@@ -99,6 +85,20 @@ export function AuctionBrowse() {
     value: 'closed',
     label: 'Closed'
   }];
+
+
+  useEffect(() => {
+    getAuctions()
+      .then((data) => {
+        setAuctions(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      }
+    );
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -124,7 +124,24 @@ export function AuctionBrowse() {
         </h1>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mockAuctions.map((auction, index) =>
+          {loading && <>
+            <div className="rounded-3xl overflow-hidden bg-slate-200 p-4">
+              <div className="aspect-square w-full animate-pulse bg-slate-300 rounded-xl "></div>
+              <div className="w-full h-8 my-4 bg-slate-300 animate-pulse rounded-xl "></div>
+            </div>
+            <div className="rounded-3xl overflow-hidden bg-slate-200 p-4">
+              <div className="aspect-square w-full animate-pulse bg-slate-300 rounded-xl "></div>
+              <div className="w-full h-8 my-4 bg-slate-300 animate-pulse rounded-xl "></div>
+            </div>
+            <div className="rounded-3xl overflow-hidden bg-slate-200 p-4">
+              <div className="aspect-square w-full animate-pulse bg-slate-300 rounded-xl "></div>
+              <div className="w-full h-8 my-4 bg-slate-300 animate-pulse rounded-xl "></div>
+            </div>
+          </>}
+          {error && <div className="text-red-600 text-center col-span-full">
+            Error loading auctions: {error}
+          </div>}
+          {auctions && auctions.map((auction, index) =>
           <motion.div
             key={auction.id}
             initial={{
@@ -148,30 +165,30 @@ export function AuctionBrowse() {
               
                 <div className="aspect-square overflow-hidden">
                   <img
-                  src={auction.image}
-                  alt={auction.title}
+                  src={getAuctionImage(auction)}
+                  alt={auction.name}
                   className="w-full h-full object-cover" />
                 
                 </div>
                 <div className="p-4">
                   <h3 className="font-semibold text-slate-800 mb-2">
-                    {auction.title}
+                    {auction.name}
                   </h3>
                   <p className="text-sm text-slate-600 mb-3">
                     Current bid:{' '}
                     <span className="font-mono font-bold text-slate-800">
-                      ${auction.currentBid.toLocaleString()}
+                      ${auction.items[0]?.currentPrice?.toLocaleString()}
                     </span>
                   </p>
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/15 text-red-700 text-xs font-medium rounded-md border border-red-500/30">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse-dot"></span>
-                      LIVE
-                    </span>
+                    <AuctionStatusBadge status={auction.status} />
                     <span className="text-sm font-mono text-slate-600">
+                      {/*
                       {String(auction.timeLeft.hours).padStart(2, '0')}:
                       {String(auction.timeLeft.minutes).padStart(2, '0')}:
                       {String(auction.timeLeft.seconds).padStart(2, '0')}
+                      */}
+                      <AuctionRemaingTimeComponent auction={auction} />
                     </span>
                   </div>
                 </div>

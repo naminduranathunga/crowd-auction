@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { TopNav } from '../components/TopNav';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import RealtimeBidder from '../components/RealtimeBidder';
+import { AuctionResponse, getAuctionById } from '../services/itemApi';
+import AuctionStatusBadge from '../components/AuctionStatusBadge';
+import AuctionDetailsTimer from '../components/AuctionDetailsTimer';
+import { placeBid } from '../services/bidApi';
+import { useAuth } from '../hooks/useAuth';
 const mockItem = {
   id: 1,
   title: 'Vintage Rolex Submariner',
@@ -45,13 +51,57 @@ const mockItem = {
 };
 export function ItemDetail() {
   const { id } = useParams();
+  const {user} = useAuth();
+  const [currentAuction, setCurrentAuction] = useState<AuctionResponse|null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string|null>(null);
+  
   const [selectedImage, setSelectedImage] = useState(0);
   const [bidAmount, setBidAmount] = useState('');
   const [showBidHistory, setShowBidHistory] = useState(false);
+  
   const handlePlaceBid = (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Bid placed: $${bidAmount}`);
+    placeBid(id ? parseInt(id) : 0, parseFloat(bidAmount), user?.id || '')
+      .then((response) => {
+        alert(`Bid placed: $${response.amount}`);
+        setBidAmount('');
+        document.dispatchEvent(new CustomEvent("bid-placed", { detail: { itemId: id, bid: response } }));
+      })
+      .catch((error) => {
+        console.error('Error placing bid:', error);
+        alert('Failed to place bid. Please try again.');
+      });
   };
+
+  useEffect(() => {
+    getAuctionById(id ? parseInt(id) : 0)
+      .then((auction) => {
+        setCurrentAuction(auction);
+      })
+      .catch((error) => {
+        console.error('Error fetching auction details:', error);
+        setError('Failed to fetch auction details');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [id]);
+
+  useEffect(() => {
+    const handleAuctionTimerExpired = (event: CustomEvent) => {
+      const expiredAuctionId = event.detail.auctionId;
+      if (currentAuction && currentAuction.id === expiredAuctionId) {
+        setCurrentAuction({ ...currentAuction, status: 'CLOSED' });
+      }
+    };
+
+    document.addEventListener('auction-timer-expired', handleAuctionTimerExpired as EventListener);
+    return () => {
+      document.removeEventListener('auction-timer-expired', handleAuctionTimerExpired as EventListener);
+    }
+  }, [currentAuction]);
+
   return (
     <div className="min-h-screen">
       <TopNav />
@@ -83,37 +133,24 @@ export function ItemDetail() {
             </div>
           </div>
 
-          <div className="space-y-6">
+          {currentAuction && <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold text-slate-800 mb-2">
-                {mockItem.title}
+                {currentAuction?.name}
               </h1>
               <p className="text-sm text-slate-600">
-                Seller: {mockItem.seller}
+                {currentAuction.description}
               </p>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-500/15 text-red-700 text-sm font-medium rounded-md border border-red-500/30 mt-2">
-                <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse-dot"></span>
-                LIVE
-              </div>
+              <AuctionStatusBadge status={currentAuction.status} />
             </div>
 
-            <div className="flex gap-3">
-              {(['hours', 'minutes', 'seconds'] as const).map((unit) =>
-              <div
-                key={unit}
-                className="flex-1 glass-card-strong rounded-2xl p-4 text-center">
-                
-                  <div className="text-3xl font-bold font-mono text-slate-800">
-                    {String(mockItem.timeLeft[unit]).padStart(2, '0')}
-                  </div>
-                  <div className="text-xs text-slate-600 uppercase mt-1">
-                    {unit}
-                  </div>
-                </div>
-              )}
-            </div>
+            <AuctionDetailsTimer auction={currentAuction} />
 
-            <div className="glass-card rounded-3xl p-6">
+            {currentAuction.items && currentAuction.items.length > 0 && (
+              <RealtimeBidder Item={currentAuction.items[0]} Auction={currentAuction} ItemId={id ? parseInt(id) : 0} />
+            )}
+
+            {/*<div className="glass-card rounded-3xl p-6">
               <div className="mb-4">
                 <p className="text-sm text-slate-600 mb-1">
                   Current highest bid
@@ -187,8 +224,8 @@ export function ItemDetail() {
                 )}
                 </div>
               }
-            </div>
-          </div>
+            </div>*/}
+          </div>}
         </div>
       </div>
     </div>);
