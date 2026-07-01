@@ -3,35 +3,61 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      globalcors:
-        add-to-simple-url-handler-mapping: true
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins:
-              - http://localhost:5173
-              - http://127.0.0.1:5173
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - PATCH
-              - DELETE
-              - OPTIONS
-            allowedHeaders: "*"
-            allowCredentials: true
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
-      routes:
-        - id: bid-service
-          uri: lb://bidservice
-          predicates:
-            - Path=/api/v1/bids/**
-        - id: auth-service
-          uri: lb://authservice
-          predicates:
-            - Path=/api/v1/auth/**
+      server:
+        webflux:
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            corsConfigurations:
+              '[/**]':
+                allowedOrigins:
+                  - http://localhost:5173
+                  - http://127.0.0.1:5173
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - PATCH
+                  - DELETE
+                  - OPTIONS
+                allowedHeaders: "*"
+                allowCredentials: true
+          discovery:
+            locator:
+              enabled: true
+              lower-case-service-id: true
+          routes:
+            - id: bid-service
+              uri: lb://bidservice
+              predicates:
+                - Path=/api/v1/bids/**
+            - id: bid-service-item-bids
+              uri: lb://bidservice
+              predicates:
+                - Path=/api/v1/items/**
+            - id: bid-service-websocket
+              uri: lb://bidservice
+              predicates:
+                - Path=/ws/**
+            - id: auth-service
+              uri: lb://authservice
+              predicates:
+                - Path=/api/v1/auth/**
+            - id: user-service
+              uri: lb://authservice
+              predicates:
+                - Path=/api/v1/users/**
+            - id: item-service-auctions
+              uri: lb://itemservice
+              predicates:
+                - Path=/api/v1/auctions/**
+            - id: item-service-internal
+              uri: lb://itemservice
+              predicates:
+                - Path=/api/v1/internal/**
+            - id: wallet-service
+              uri: lb://walletservice
+              predicates:
+                - Path=/api/v1/wallets/**
 
 server:
   port: ${SERVER_PORT:8080}
