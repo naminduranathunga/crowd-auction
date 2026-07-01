@@ -43,7 +43,15 @@ public class JwtService {
     }
 
     public String generateToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails);
+        Map<String, Object> extraClaims = new HashMap<>();
+        if (userDetails instanceof com.crowd.auction.authservice.model.User user) {
+            extraClaims.put("email", user.getEmail());
+            extraClaims.put("userId", user.getId());
+            extraClaims.put("roles", user.getAuthorities().stream()
+                    .map(a -> a.getAuthority())
+                    .collect(java.util.stream.Collectors.toList()));
+        }
+        return generateToken(extraClaims, userDetails);
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {

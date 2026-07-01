@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Wallet } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { depositFunds } from '../services/walletApi';
+import { withdrawFunds } from '../services/walletApi';
 
-interface TopUpModalProps {
+interface WithdrawModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  availableBalance: number;
 }
 
-export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
+export function WithdrawModal({ isOpen, onClose, onSuccess, availableBalance }: WithdrawModalProps) {
   const { user } = useAuth();
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState('');
@@ -19,7 +20,7 @@ export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
 
   const presetAmounts = [50, 100, 250];
 
-  const handleAddFunds = async (e: React.FormEvent) => {
+  const handleWithdrawFunds = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
     
@@ -29,17 +30,22 @@ export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
       return;
     }
 
+    if (amount > availableBalance) {
+      setError('Insufficient available balance');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
-      await depositFunds(user.id, amount, 'Deposit via sandbox');
+      await withdrawFunds(user.id, amount, 'Withdrawal via sandbox');
       setSelectedAmount(null);
       setCustomAmount('');
       onSuccess();
       onClose();
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.error || err.message || 'Failed to deposit funds');
+      setError(err.response?.data?.error || err.message || 'Failed to withdraw funds');
     } finally {
       setLoading(false);
     }
@@ -66,11 +72,11 @@ export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
             <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-2xl w-full max-w-md pointer-events-auto overflow-hidden">
               <div className="flex items-center justify-between p-6 border-b border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-full flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-blue-400" />
+                  <div className="w-10 h-10 bg-red-500/10 rounded-full flex items-center justify-center">
+                    <Wallet className="w-5 h-5 text-red-400" />
                   </div>
                   <h2 className="text-lg font-semibold text-slate-50">
-                    Add funds to your wallet
+                    Withdraw funds
                   </h2>
                 </div>
                 <button
@@ -82,7 +88,7 @@ export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
                 </button>
               </div>
 
-              <form onSubmit={handleAddFunds} className="p-6 space-y-6">
+              <form onSubmit={handleWithdrawFunds} className="p-6 space-y-6">
                 {error && (
                   <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg">
                     {error}
@@ -101,10 +107,10 @@ export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
                         }}
                         className={`flex-1 py-3 rounded-lg border-2 font-semibold transition-all ${
                           selectedAmount === amount
-                            ? 'border-blue-500 bg-blue-500 text-white'
+                            ? 'border-red-500 bg-red-500 text-white'
                             : 'border-slate-700 text-slate-300 hover:border-slate-600'
                         }`}
-                        disabled={loading}
+                        disabled={loading || amount > availableBalance}
                       >
                         ${amount}
                       </button>
@@ -126,10 +132,11 @@ export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
                           setCustomAmount(e.target.value);
                           setSelectedAmount(null);
                         }}
-                        className="w-full pl-8 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full pl-8 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
                         placeholder="0.00"
                         min="1"
                         step="0.01"
+                        max={availableBalance}
                         disabled={loading}
                       />
                     </div>
@@ -139,13 +146,13 @@ export function TopUpModal({ isOpen, onClose, onSuccess }: TopUpModalProps) {
                 <button
                   type="submit"
                   disabled={loading || (!selectedAmount && !customAmount)}
-                  className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Processing...' : 'Add funds'}
+                  {loading ? 'Processing...' : 'Withdraw funds'}
                 </button>
 
                 <p className="text-xs text-slate-500 text-center">
-                  This is a sandbox simulation. No real payment is processed.
+                  This is a sandbox simulation. No real bank transfer is processed.
                 </p>
               </form>
             </div>
